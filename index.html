@@ -1,0 +1,3006 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <title>Carta Psicrométrica Pro — PWA Offline</title>
+
+  <!-- Metadatos PWA y compatibilidad móvil (Android / iOS) -->
+  <meta name="description" content="Carta Psicrométrica Interactiva de alta precisión (ASHRAE Hyland-Wexler) con rangos variables de temperatura y presión, 100% offline." />
+  <meta name="theme-color" content="#0f2942" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Psicrometría" />
+
+  <!-- Icono SVG embebido en Data URI (sin base64 ni archivos externos) -->
+  <link id="appIconLink" rel="icon" type="image/svg+xml" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='28' fill='%230f2942'/%3E%3Cpath d='M22 98H106M26 92C52 88 78 66 98 28' fill='none' stroke='%2338bdf8' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M32 94C58 91 82 76 102 48' fill='none' stroke='%230284c7' stroke-width='4' stroke-linecap='round' opacity='0.8'/%3E%3Cpath d='M68 62V98M68 62H104' fill='none' stroke='%23f87171' stroke-width='3.5' stroke-dasharray='5 4'/%3E%3Ccircle cx='68' cy='62' r='8' fill='%23dc2626' stroke='%23ffffff' stroke-width='3'/%3E%3C/svg%3E" />
+  <link id="appleIconLink" rel="apple-touch-icon" href="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='28' fill='%230f2942'/%3E%3Cpath d='M22 98H106M26 92C52 88 78 66 98 28' fill='none' stroke='%2338bdf8' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M32 94C58 91 82 76 102 48' fill='none' stroke='%230284c7' stroke-width='4' stroke-linecap='round' opacity='0.8'/%3E%3Cpath d='M68 62V98M68 62H104' fill='none' stroke='%23f87171' stroke-width='3.5' stroke-dasharray='5 4'/%3E%3Ccircle cx='68' cy='62' r='8' fill='%23dc2626' stroke='%23ffffff' stroke-width='3'/%3E%3C/svg%3E" />
+
+  <style>
+    /* =========================================================================
+       VARIABLES DE DISEÑO Y RESET MODERNO (100% CSS PURO OFFLINE)
+       ========================================================================= */
+    :root {
+      --bg-page: #f4f6f9;
+      --bg-card: #ffffff;
+      --bg-subtle: #f8fafc;
+      --bg-muted: #f1f5f9;
+      --navy: #0f2942;
+      --navy-light: #1a3d5e;
+      --accent-blue: #0284c7;
+      --accent-blue-soft: #e0f2fe;
+      --accent-green: #059669;
+      --accent-green-soft: #d1fae5;
+      --accent-red: #dc2626;
+      --accent-red-soft: #fee2e2;
+      --accent-amber: #d97706;
+      --accent-purple: #7c3aed;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text-main: #0f172a;
+      --text-body: #334155;
+      --text-muted: #64748b;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.03);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.12);
+      --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    button, input, select {
+      font-family: inherit;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* =========================================================================
+       BARRA SUPERIOR (HEADER)
+       ========================================================================= */
+    .topbar {
+      background: linear-gradient(135deg, var(--navy) 0%, #153554 100%);
+      color: #ffffff;
+      padding: 12px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: 0 2px 10px rgba(15, 41, 66, 0.18);
+    }
+
+    .topbar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-text h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-text p {
+      margin: 2px 0 0;
+      font-size: 11.5px;
+      color: #bae6fd;
+      opacity: 0.92;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .pill-pressure {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f8fafc;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .pill-pressure:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-install {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--accent-blue);
+      color: #ffffff;
+      border: none;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: filter 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-install:hover {
+      filter: brightness(1.08);
+    }
+
+    .btn-install:active {
+      transform: scale(0.97);
+    }
+
+    /* =========================================================================
+       LAYOUT PRINCIPAL (MOBILE-FIRST -> 2 COLUMNAS EN >= 960px)
+       ========================================================================= */
+    .app-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    @media (min-width: 960px) {
+      .app-container {
+        padding: 18px 20px 24px;
+        grid-template-columns: minmax(0, 1.85fr) minmax(360px, 1fr);
+        align-items: start;
+        gap: 18px;
+      }
+    }
+
+    /* Tarjeta base */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    /* =========================================================================
+       COLUMNA CARTA: HUD EN VIVO + CANVAS + CHIPS + ACCIONES RÁPIDAS
+       ========================================================================= */
+    .chart-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* HUD en vivo (fijo sobre la carta para lectura instantánea móvil/escritorio) */
+    .hud-bar {
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .hud-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11.5px;
+    }
+
+    .hud-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: var(--navy);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      display: inline-block;
+    }
+
+    .status-dot.warn {
+      background: var(--accent-red);
+    }
+
+    .hud-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .hud-item {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 6px 5px;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .hud-item-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      line-height: 1.1;
+      margin-bottom: 3px;
+    }
+
+    .hud-item-val {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (min-width: 600px) {
+      .hud-item-val {
+        font-size: 14px;
+      }
+      .hud-item-label {
+        font-size: 11px;
+      }
+    }
+
+    .hud-item.tbs { border-top: 2.5px solid var(--accent-red); }
+    .hud-item.tbh { border-top: 2.5px solid var(--accent-green); }
+    .hud-item.tpr { border-top: 2.5px solid var(--accent-blue); }
+    .hud-item.hum { border-top: 2.5px solid var(--navy); }
+    .hud-item.hr  { border-top: 2.5px solid #0ea5e9; }
+
+    /* Contenedor del Canvas HiDPI */
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      height: 54vh;
+      min-height: 360px;
+      max-height: 560px;
+      background: #ffffff;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    @media (min-width: 960px) {
+      .canvas-wrapper {
+        height: 620px;
+        max-height: 74vh;
+      }
+    }
+
+    #psychroCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    /* Barra de chips de isolíneas y leyenda */
+    .chart-footer {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chip-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      background: #ffffff;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip-toggle .swatch {
+      width: 12px;
+      height: 3px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .chip-toggle.active {
+      border-color: var(--navy);
+      background: #f0f9ff;
+      color: var(--navy);
+    }
+
+    .chart-hint {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* Barra de acciones rápidas (muy útil justo debajo de la carta en móvil) */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    @media (min-width: 960px) {
+      .quick-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+    }
+
+    .qa-btn {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 6px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text-main);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+
+    @media (min-width: 960px) {
+      .qa-btn {
+        flex-direction: row;
+        padding: 9px 14px;
+        font-size: 12.5px;
+      }
+    }
+
+    .qa-btn:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-subtle);
+    }
+
+    .qa-btn:active {
+      transform: scale(0.98);
+    }
+
+    .qa-btn.primary {
+      background: var(--accent-red);
+      border-color: var(--accent-red);
+      color: #ffffff;
+    }
+
+    .qa-btn.primary:hover {
+      background: #b91c1c;
+    }
+
+    /* =========================================================================
+       COLUMNA PANELES CON PESTAÑAS (PROPIEDADES / RANGOS Y P / PUNTOS)
+       ========================================================================= */
+    .side-column {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tabs-nav {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      background: var(--bg-muted);
+      padding: 5px;
+      gap: 5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 9px 6px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: #ffffff;
+      color: var(--navy);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+    }
+
+    .badge-count {
+      background: var(--accent-red);
+      color: #ffffff;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .tab-panel {
+      display: none;
+      padding: 14px;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* =========================================================================
+       GRUPOS DE PROPIEDADES (15 PROPIEDADES ORGANIZADAS)
+       ========================================================================= */
+    .prop-section {
+      margin-bottom: 14px;
+    }
+
+    .prop-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .prop-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .prop-section-title::before {
+      content: "";
+      width: 4px;
+      height: 12px;
+      border-radius: 2px;
+      background: var(--accent-blue);
+      display: inline-block;
+    }
+
+    .prop-section-title.green::before { background: var(--accent-green); }
+    .prop-section-title.navy::before  { background: var(--navy); }
+
+    .prop-table {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .prop-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 11px;
+      border-bottom: 1px solid var(--bg-muted);
+      gap: 8px;
+      font-size: 12.5px;
+    }
+
+    .prop-row:last-child {
+      border-bottom: none;
+    }
+
+    .prop-row:nth-child(even) {
+      background: #fafcfe;
+    }
+
+    .prop-name {
+      color: var(--text-body);
+      font-weight: 500;
+    }
+
+    .prop-sym {
+      color: var(--text-muted);
+      font-size: 11.5px;
+      margin-left: 3px;
+    }
+
+    .prop-value-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .prop-val {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: var(--text-main);
+    }
+
+    .prop-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+      min-width: 58px;
+      text-align: left;
+    }
+
+    /* =========================================================================
+       FORMULARIOS, ATAJOS Y VALIDACIONES (RANGOS Y P / INGRESO MANUAL)
+       ========================================================================= */
+    .form-section {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .form-section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .section-heading {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0 0 10px;
+    }
+
+    .input-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-body);
+    }
+
+    .field input, .field select {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: #ffffff;
+      color: var(--text-main);
+      font-size: 13.5px;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .field input:focus, .field select:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .preset-btn {
+      flex: 1 1 auto;
+      padding: 7px 9px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-subtle);
+      color: var(--text-body);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent-blue);
+      background: var(--accent-blue-soft);
+      color: var(--navy);
+    }
+
+    .alt-box {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      margin-top: 10px;
+    }
+
+    .alt-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .alt-row input {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-navy {
+      background: var(--navy);
+      color: #ffffff;
+    }
+
+    .btn-navy:hover {
+      background: var(--navy-light);
+    }
+
+    .btn-blue {
+      background: var(--accent-blue);
+      color: #ffffff;
+    }
+
+    .btn-blue:hover {
+      filter: brightness(1.06);
+    }
+
+    .btn-red {
+      background: var(--accent-red);
+      color: #ffffff;
+    }
+
+    .btn-red:hover {
+      background: #b91c1c;
+    }
+
+    .btn-outline {
+      background: #ffffff;
+      border-color: var(--border-strong);
+      color: var(--text-body);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg-subtle);
+      color: var(--text-main);
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .msg-error {
+      display: none;
+      margin-top: 10px;
+      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-red-soft);
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .msg-error.visible {
+      display: block;
+    }
+
+    /* =========================================================================
+       LISTA DE PUNTOS FIJADOS Y TARJETA DE DIFERENCIAS DE PROCESO
+       ========================================================================= */
+    .points-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 230px;
+      overflow-y: auto;
+    }
+
+    .point-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: #ffffff;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .point-item:hover {
+      border-color: var(--accent-blue);
+      background: #f8fbff;
+    }
+
+    .point-item.selected {
+      border-color: var(--accent-red);
+      background: #fff5f5;
+    }
+
+    .point-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-red);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .point-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .point-main {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .point-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .point-del {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .point-del:hover {
+      background: var(--accent-red-soft);
+      color: var(--accent-red);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 18px 12px;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* Tarjeta de Diferencias de Proceso */
+    .delta-card {
+      background: linear-gradient(135deg, #0f2942 0%, #173a5c 100%);
+      color: #ffffff;
+      border-radius: var(--radius-md);
+      padding: 12px;
+    }
+
+    .delta-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .delta-head span {
+      font-size: 12px;
+      font-weight: 700;
+      color: #bae6fd;
+    }
+
+    .delta-selectors {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .delta-selectors select {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .delta-selectors select option {
+      color: var(--text-main);
+      background: #ffffff;
+    }
+
+    .delta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .delta-metric {
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius-sm);
+      padding: 8px 6px;
+      text-align: center;
+    }
+
+    .delta-metric-lbl {
+      font-size: 10.5px;
+      color: #cbd5e1;
+      display: block;
+    }
+
+    .delta-metric-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+      display: block;
+      margin-top: 3px;
+    }
+
+    .delta-metric-sub {
+      font-size: 10px;
+      color: #7dd3fc;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* =========================================================================
+       TOAST Y MODAL DE INSTALACIÓN PWA
+       ========================================================================= */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--navy);
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+      z-index: 90;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      max-width: 92vw;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 80;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      max-width: 440px;
+      width: 100%;
+      padding: 18px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+    }
+
+    .modal-box h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--navy);
+    }
+
+    .modal-box p, .modal-box li {
+      font-size: 13px;
+      color: var(--text-body);
+      line-height: 1.5;
+    }
+
+    .modal-box ol {
+      padding-left: 18px;
+      margin: 8px 0 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== BARRA SUPERIOR ==================== -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 20h18" />
+            <path d="M4 18c5-1 10-5 15-14" />
+            <circle cx="13" cy="13" r="2.2" fill="#dc2626" stroke="#ffffff" stroke-width="1.3" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Carta Psicrométrica Pro</h1>
+          <p>ASHRAE Hyland-Wexler · 100% Offline</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button type="button" id="btnTopPressure" class="pill-pressure mono" title="Cambiar presión o rangos">
+          <span>P:</span>
+          <strong id="topPressureVal">101.325</strong>
+          <span>kPa</span>
+        </button>
+        <button type="button" id="btnInstallApp" class="btn-install" title="Instalar en tu teléfono">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+          </svg>
+          <span>App</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== CONTENEDOR PRINCIPAL ==================== -->
+  <main class="app-container">
+
+    <!-- COLUMNA IZQUIERDA: CARTA PSICROMÉTRICA + HUD + ACCIONES RÁPIDAS -->
+    <section class="chart-column">
+      <div class="card">
+
+        <!-- HUD en vivo (5 lecturas clave visibles siempre sobre la carta) -->
+        <div class="hud-bar">
+          <div class="hud-header">
+            <div class="hud-status">
+              <span id="hudStatusDot" class="status-dot"></span>
+              <span id="hudStatusText">Punto activo — arrastra sobre la carta</span>
+            </div>
+            <span id="hudBoilInfo" class="mono" style="color: var(--text-muted); font-size: 11px;">T_eb ≈ 100.0 °C</span>
+          </div>
+
+          <div class="hud-grid">
+            <div class="hud-item tbs">
+              <span class="hud-item-label">T<sub>bs</sub> (°C)</span>
+              <span id="hudTbs" class="hud-item-val mono">25.00</span>
+            </div>
+            <div class="hud-item tbh">
+              <span class="hud-item-label">T<sub>bh</sub> (°C)</span>
+              <span id="hudTbh" class="hud-item-val mono">17.85</span>
+            </div>
+            <div class="hud-item tpr">
+              <span class="hud-item-label">T<sub>pr</sub> (°C)</span>
+              <span id="hudTpr" class="hud-item-val mono">13.86</span>
+            </div>
+            <div class="hud-item hum">
+              <span class="hud-item-label">H (g/kg)</span>
+              <span id="hudHg" class="hud-item-val mono">9.89</span>
+            </div>
+            <div class="hud-item hr">
+              <span class="hud-item-label">HR (%)</span>
+              <span id="hudHr" class="hud-item-val mono">50.0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas HiDPI Interactiva -->
+        <div id="canvasWrapper" class="canvas-wrapper">
+          <canvas id="psychroCanvas"></canvas>
+        </div>
+
+        <!-- Chips de Isolíneas y ayuda rápida -->
+        <div class="chart-footer">
+          <div class="chip-group" role="group" aria-label="Mostrar u ocultar isolíneas">
+            <button type="button" class="chip-toggle active" data-layer="hr">
+              <span class="swatch" style="background:#0284c7;"></span>HR (%)
+            </button>
+            <button type="button" class="chip-toggle active" data-layer="tbh">
+              <span class="swatch" style="background:#059669;"></span>T<sub>bh</sub>
+            </button>
+            <button type="button" class="chip-toggle active" data-layer="enth">
+              <span class="swatch" style="background:#d97706;"></span>Entalpía h
+            </button>
+            <button type="button" class="chip-toggle active" data-layer="vh">
+              <span class="swatch" style="background:#7c3aed;"></span>Vol. v<sub>H</sub>
+            </button>
+          </div>
+          <span class="chart-hint">Toca/arrastra para explorar · Clic izq. en PC fija punto</span>
+        </div>
+      </div>
+
+      <!-- Barra de Acciones Rápidas (ideal en móvil) -->
+      <div class="quick-actions">
+        <button type="button" id="qaPinCurrent" class="qa-btn primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
+          </svg>
+          <span>Fijar Punto</span>
+        </button>
+        <button type="button" id="qaGoRanges" class="qa-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M1 14h6m2-6h6m2 8h6" />
+          </svg>
+          <span>Rangos y P</span>
+        </button>
+        <button type="button" id="qaGoManual" class="qa-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14m-7-7h14" />
+          </svg>
+          <span>Ingreso Manual</span>
+        </button>
+        <button type="button" id="qaClearPoints" class="qa-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18m-2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+          </svg>
+          <span>Limpiar</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- COLUMNA DERECHA: PANEL CON PESTAÑAS LIMPIAS -->
+    <aside id="sidePanel" class="side-column card">
+      <!-- Navegación por Pestañas -->
+      <nav class="tabs-nav" role="tablist">
+        <button type="button" class="tab-btn active" data-tab="props" role="tab" aria-selected="true">
+          Propiedades
+        </button>
+        <button type="button" class="tab-btn" data-tab="ranges" role="tab" aria-selected="false">
+          Rangos y P
+        </button>
+        <button type="button" class="tab-btn" data-tab="points" role="tab" aria-selected="false">
+          Puntos <span id="tabPointsBadge" class="badge-count">0</span>
+        </button>
+      </nav>
+
+      <!-- ==================== PESTAÑA 1: 15 PROPIEDADES ==================== -->
+      <div id="tab-props" class="tab-panel active" role="tabpanel">
+        <!-- Grupo 1: Temperaturas -->
+        <div class="prop-section">
+          <h3 class="prop-section-title">Temperaturas</h3>
+          <div class="prop-table">
+            <div class="prop-row">
+              <span class="prop-name">Bulbo seco <span class="prop-sym">(T<sub>bs</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_T_bs" class="prop-val mono">—</span><span class="prop-unit">°C</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Bulbo húmedo <span class="prop-sym">(T<sub>bh</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_T_bh" class="prop-val mono" style="color:var(--accent-green);">—</span><span class="prop-unit">°C</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Punto de rocío <span class="prop-sym">(T<sub>pr</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_T_pr" class="prop-val mono" style="color:var(--accent-blue);">—</span><span class="prop-unit">°C</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grupo 2: Humedad y Presión de Vapor -->
+        <div class="prop-section">
+          <h3 class="prop-section-title green">Humedad y Presión de Vapor</h3>
+          <div class="prop-table">
+            <div class="prop-row">
+              <span class="prop-name">Humedad absoluta <span class="prop-sym">(H)</span></span>
+              <span class="prop-value-wrap"><span id="p_H" class="prop-val mono">—</span><span class="prop-unit">kg/kg a.s.</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Humedad absoluta <span class="prop-sym">(H)</span></span>
+              <span class="prop-value-wrap"><span id="p_H_g" class="prop-val mono">—</span><span class="prop-unit">g/kg a.s.</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Humedad relativa <span class="prop-sym">(HR)</span></span>
+              <span class="prop-value-wrap"><span id="p_HR" class="prop-val mono">—</span><span class="prop-unit">%</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Humedad porcentual <span class="prop-sym">(μ)</span></span>
+              <span class="prop-value-wrap"><span id="p_mu" class="prop-val mono">—</span><span class="prop-unit">%</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Presión parcial vapor <span class="prop-sym">(P<sub>v</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_Pv" class="prop-val mono">—</span><span class="prop-unit">kPa</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Presión saturación <span class="prop-sym">(P<sub>sat</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_P_sat" class="prop-val mono">—</span><span class="prop-unit">kPa</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Fracción molar agua <span class="prop-sym">(y<sub>w</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_y_w" class="prop-val mono">—</span><span class="prop-unit">mol/mol</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grupo 3: Energía y Propiedades Físicas -->
+        <div class="prop-section">
+          <h3 class="prop-section-title navy">Energía y Propiedades Físicas</h3>
+          <div class="prop-table">
+            <div class="prop-row">
+              <span class="prop-name">Entalpía específica <span class="prop-sym">(h)</span></span>
+              <span class="prop-value-wrap"><span id="p_h" class="prop-val mono">—</span><span class="prop-unit">kJ/kg a.s.</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Volumen húmedo <span class="prop-sym">(v<sub>H</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_v_H" class="prop-val mono">—</span><span class="prop-unit">m³/kg a.s.</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Densidad aire seco <span class="prop-sym">(ρ<sub>as</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_rho_as" class="prop-val mono">—</span><span class="prop-unit">kg a.s./m³</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Densidad aire húmedo <span class="prop-sym">(ρ<sub>ah</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_rho_ah" class="prop-val mono">—</span><span class="prop-unit">kg/m³</span></span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-name">Calor húmedo <span class="prop-sym">(c<sub>s</sub>)</span></span>
+              <span class="prop-value-wrap"><span id="p_c_s" class="prop-val mono">—</span><span class="prop-unit">kJ/(kg·°C)</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PESTAÑA 2: RANGOS Y PRESIÓN ==================== -->
+      <div id="tab-ranges" class="tab-panel" role="tabpanel">
+        <!-- Rangos de Temperatura y Humedad -->
+        <div class="form-section">
+          <h3 class="section-heading">Límites de la Carta</h3>
+          <div class="input-grid-2">
+            <div class="field">
+              <label for="inTmin">T<sub>mín</sub> (°C)</label>
+              <input id="inTmin" class="mono" type="number" step="1" min="-80" max="175" value="0" />
+            </div>
+            <div class="field">
+              <label for="inTmax">T<sub>máx</sub> (°C)</label>
+              <input id="inTmax" class="mono" type="number" step="1" min="-75" max="180" value="50" />
+            </div>
+            <div class="field">
+              <label for="inHmax">H<sub>máx</sub> (kg/kg)</label>
+              <input id="inHmax" class="mono" type="number" step="0.005" min="0.002" max="2.0" value="0.035" />
+            </div>
+            <div class="field">
+              <label for="inPressure">Presión P (kPa)</label>
+              <input id="inPressure" class="mono" type="number" step="0.1" min="10" max="500" value="101.325" />
+            </div>
+          </div>
+
+          <div class="preset-row" aria-label="Atajos de rango térmico">
+            <button type="button" class="preset-btn" data-trange="0,50,0.035">Estándar (0–50 °C)</button>
+            <button type="button" class="preset-btn" data-trange="15,35,0.030">Zoom ambiente (15–35 °C)</button>
+            <button type="button" class="preset-btn" data-trange="20,100,0.120">Secado (20–100 °C)</button>
+          </div>
+        </div>
+
+        <!-- Atajos de Presión y Calculadora por Altitud -->
+        <div class="form-section">
+          <h3 class="section-heading">Presión Atmosférica y Altitud</h3>
+          <div class="preset-row" aria-label="Atajos de presión">
+            <button type="button" class="preset-btn" data-ppreset="101.325">101.325 kPa<br><span style="font-weight:400;color:var(--text-muted)">Nivel mar</span></button>
+            <button type="button" class="preset-btn" data-ppreset="84.5">84.5 kPa<br><span style="font-weight:400;color:var(--text-muted)">~1550 m</span></button>
+            <button type="button" class="preset-btn" data-ppreset="77.5">77.5 kPa<br><span style="font-weight:400;color:var(--text-muted)">~2240 m</span></button>
+          </div>
+
+          <div class="alt-box">
+            <label for="inAltitud" style="font-size:11.5px;font-weight:600;color:var(--text-body);display:block;">
+              Calculadora barométrica por altitud (m s.n.m.)
+            </label>
+            <div class="alt-row">
+              <input id="inAltitud" class="mono" type="number" step="10" min="-400" max="10000" placeholder="Ej. 1550" />
+              <button type="button" id="btnCalcAlt" class="btn btn-outline" style="padding:8px 12px;font-size:12px;">Calcular P</button>
+            </div>
+            <div id="altPreview" class="mono" style="font-size:11px;color:var(--text-muted);margin-top:5px;">
+              Fórmula ISA: P = 101.325·(1 − 2.25577×10⁻⁵·z)⁵·²⁵⁵⁸⁸
+            </div>
+          </div>
+
+          <div id="rangeError" class="msg-error" role="alert"></div>
+
+          <button type="button" id="btnApplyRanges" class="btn btn-navy btn-full" style="margin-top:12px;">
+            Aplicar Rangos y Presión
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== PESTAÑA 3: INGRESO MANUAL, PUNTOS Y PROCESO ==================== -->
+      <div id="tab-points" class="tab-panel" role="tabpanel">
+        <!-- Ingreso Manual -->
+        <div class="form-section">
+          <h3 class="section-heading">Ingreso Manual de Punto</h3>
+          <div class="field" style="margin-bottom:8px;">
+            <label for="selManualMode">Par de variables conocidas</label>
+            <select id="selManualMode">
+              <option value="tbh">(T_bs, T_bh) — Bulbo seco y bulbo húmedo</option>
+              <option value="hr">(T_bs, HR %) — Bulbo seco y humedad relativa</option>
+              <option value="h">(T_bs, H) — Bulbo seco y humedad absoluta</option>
+            </select>
+          </div>
+          <div class="input-grid-2">
+            <div class="field">
+              <label for="inManV1">T<sub>bs</sub> (°C)</label>
+              <input id="inManV1" class="mono" type="number" step="0.1" value="25.0" />
+            </div>
+            <div class="field">
+              <label id="lblManV2" for="inManV2">T<sub>bh</sub> (°C)</label>
+              <input id="inManV2" class="mono" type="number" step="0.1" value="20.0" />
+            </div>
+          </div>
+
+          <div id="manualError" class="msg-error" role="alert"></div>
+
+          <div class="btn-row">
+            <button type="button" id="btnPinManual" class="btn btn-blue">Fijar Manual</button>
+            <button type="button" id="btnPinCursorTab" class="btn btn-red">Fijar Cursor</button>
+          </div>
+        </div>
+
+        <!-- Lista de Puntos Fijados -->
+        <div class="form-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <h3 class="section-heading" style="margin:0;">Puntos Fijados</h3>
+            <div style="display:flex;gap:6px;">
+              <button type="button" id="btnCopyPoints" class="btn btn-outline" style="padding:5px 9px;font-size:11.5px;">Copiar tabla</button>
+              <button type="button" id="btnClearPointsTab" class="btn btn-outline" style="padding:5px 9px;font-size:11.5px;color:var(--accent-red);">Limpiar</button>
+            </div>
+          </div>
+
+          <div id="pointsListContainer">
+            <div class="empty-state">
+              Aún no hay puntos fijados.<br>
+              Explora la carta y pulsa <strong>Fijar Punto</strong> o ingresa coordenadas arriba.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta de Balance / Diferencias de Proceso -->
+        <div id="deltaSection" class="form-section" style="display:none;">
+          <div class="delta-card">
+            <div class="delta-head">
+              <span>Diferencias de Proceso</span>
+              <div class="delta-selectors">
+                <select id="selDeltaFrom" aria-label="Punto inicial"></select>
+                <span style="color:#94a3b8;font-weight:700;">→</span>
+                <select id="selDeltaTo" aria-label="Punto final"></select>
+              </div>
+            </div>
+            <div class="delta-grid">
+              <div class="delta-metric">
+                <span class="delta-metric-lbl">ΔT<sub>bs</sub></span>
+                <span id="d_Tbs" class="delta-metric-val mono">—</span>
+                <span class="delta-metric-sub">°C</span>
+              </div>
+              <div class="delta-metric">
+                <span class="delta-metric-lbl">ΔH</span>
+                <span id="d_H" class="delta-metric-val mono">—</span>
+                <span id="d_Hg" class="delta-metric-sub mono">g/kg</span>
+              </div>
+              <div class="delta-metric">
+                <span class="delta-metric-lbl">Δh</span>
+                <span id="d_h" class="delta-metric-val mono">—</span>
+                <span class="delta-metric-sub">kJ/kg a.s.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Toast de Notificación (reemplazo limpio de alert) -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Modal de Instrucciones de Instalación PWA -->
+  <div id="installModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <h2 id="modalTitle">Usar como App Instalable y Offline</h2>
+      <p>Esta carta psicrométrica funciona <strong>100% sin internet</strong> en un solo archivo:</p>
+      <ol>
+        <li><strong>En Android (Chrome / Edge):</strong> Abre esta página (o súbela gratis a GitHub Pages / Netlify Drop), toca el menú <strong>⋮</strong> y selecciona <strong>«Instalar app»</strong> o <strong>«Agregar a pantalla de inicio»</strong>.</li>
+        <li><strong>En iPhone / iPad (Safari):</strong> Toca el botón <strong>Compartir</strong> (cuadro con flecha hacia arriba) y elige <strong>«Agregar a inicio»</strong>.</li>
+        <li><strong>Uso 100% local sin internet:</strong> Guarda este archivo <code>.html</code> en tu teléfono y ábrelo directamente con tu navegador.</li>
+      </ol>
+      <button type="button" id="btnCloseModal" class="btn btn-navy btn-full">Entendido</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MOTOR TERMODINÁMICO, MANIFEST PWA Y GRÁFICA INTERACTIVA EN JS PURO
+       ========================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      // =======================================================================
+      // 1. REGISTRO DINÁMICO DEL MANIFEST PWA Y EVENTO DE INSTALACIÓN
+      // =======================================================================
+      let deferredInstallPrompt = null;
+
+      (function setupPWAManifest() {
+        try {
+          const iconHref = document.getElementById('appIconLink').getAttribute('href');
+          const manifest = {
+            name: 'Carta Psicrométrica Pro — ASHRAE',
+            short_name: 'Psicrometría',
+            description: 'Carta psicrométrica interactiva de alta precisión con rangos variables de T y P, 100% offline.',
+            start_url: '.',
+            display: 'standalone',
+            orientation: 'any',
+            background_color: '#f4f6f9',
+            theme_color: '#0f2942',
+            icons: [
+              { src: iconHref, sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
+            ]
+          };
+          const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+          const manifestUrl = URL.createObjectURL(blob);
+          const link = document.createElement('link');
+          link.rel = 'manifest';
+          link.href = manifestUrl;
+          document.head.appendChild(link);
+        } catch (_err) {
+          // Entorno restringido: continuar sin manifest dinámico
+        }
+      })();
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+      });
+
+      // =======================================================================
+      // 2. MOTOR TERMODINÁMICO EXACTO (ASHRAE FUNDAMENTALS — HYLAND-WEXLER)
+      // =======================================================================
+      const Psicrometria = {
+        RA: 0.287042,    // Constante del aire seco [kJ/(kg·K)]
+        EPS: 0.621945,   // Relación de masas molares Mw/Ma [kg_w/kg_as]
+        CP_A: 1.006,     // Calor específico aire seco [kJ/(kg·°C)]
+        CP_V: 1.86,      // Calor específico vapor de agua [kJ/(kg·°C)]
+        H_FG0: 2501.0,   // Entalpía de vaporización del agua a 0 °C [kJ/kg]
+
+        /**
+         * Presión de vapor de saturación del agua P_sat(T_c) en kPa.
+         * Correlación Hyland-Wexler (ASHRAE) por tramos: hielo (T < 0 °C) y líquido (T >= 0 °C).
+         * Válida de -100 °C a 200 °C.
+         */
+        P_sat(T_c) {
+          const Tk = T_c + 273.15;
+          if (Tk <= 173.15) return NaN;
+          let lnP;
+          if (Tk < 273.15) {
+            lnP =
+              -5.6745359e3 / Tk +
+              6.3925247 -
+              9.6778430e-3 * Tk +
+              6.2215701e-7 * Tk * Tk +
+              2.0747825e-9 * Tk * Tk * Tk -
+              9.4840240e-13 * Tk * Tk * Tk * Tk +
+              4.1635019 * Math.log(Tk);
+          } else {
+            lnP =
+              -5.8002206e3 / Tk +
+              1.3914993 -
+              4.8640239e-2 * Tk +
+              4.1764768e-5 * Tk * Tk -
+              1.4452093e-8 * Tk * Tk * Tk +
+              6.5459673 * Math.log(Tk);
+          }
+          return Math.exp(lnP) / 1000.0;
+        },
+
+        /** Temperatura de ebullición del agua [°C] a presión P_kpa por bisección */
+        T_ebullicion(P_kpa) {
+          const pMin = this.P_sat(-99.0);
+          const pMax = this.P_sat(199.0);
+          if (P_kpa <= pMin) return -99.0;
+          if (P_kpa >= pMax) return 199.0;
+          let lo = -99.0;
+          let hi = 199.0;
+          for (let i = 0; i < 42; i++) {
+            const mid = 0.5 * (lo + hi);
+            if (this.P_sat(mid) < P_kpa) lo = mid;
+            else hi = mid;
+            if (hi - lo < 1e-4) break;
+          }
+          return 0.5 * (lo + hi);
+        },
+
+        /** Humedad absoluta H [kg_w/kg_as] a partir de Pv y P total [kPa] */
+        H_desde_Pv(Pv_kpa, P_kpa) {
+          if (!Number.isFinite(Pv_kpa) || Pv_kpa < 0 || Pv_kpa >= 0.995 * P_kpa) return NaN;
+          return (this.EPS * Pv_kpa) / (P_kpa - Pv_kpa);
+        },
+
+        /** Humedad de saturación H_sat(T_c, P_kpa) [kg_w/kg_as] */
+        H_sat(T_c, P_kpa) {
+          return this.H_desde_Pv(this.P_sat(T_c), P_kpa);
+        },
+
+        /** Presión parcial de vapor Pv [kPa] desde H y P_kpa */
+        Pv_desde_H(H, P_kpa) {
+          return (H * P_kpa) / (this.EPS + H);
+        },
+
+        /** Temperatura de punto de rocío T_pr [°C] resolviendo P_sat(T_pr) = Pv */
+        T_rocio(Pv_kpa, T_bs) {
+          if (!Number.isFinite(Pv_kpa) || Pv_kpa <= this.P_sat(-99.0)) return NaN;
+          let lo = -99.0;
+          let hi = Math.min(199.0, T_bs + 1.0);
+          if (this.P_sat(hi) < Pv_kpa) hi = 199.0;
+          if (this.P_sat(hi) < Pv_kpa) return NaN;
+          for (let i = 0; i < 42; i++) {
+            const mid = 0.5 * (lo + hi);
+            if (this.P_sat(mid) < Pv_kpa) lo = mid;
+            else hi = mid;
+            if (hi - lo < 1e-4) break;
+          }
+          return 0.5 * (lo + hi);
+        },
+
+        /** Humedad absoluta H [kg_w/kg_as] dada (T_bs, T_bh, P_kpa) — Ecuación ASHRAE */
+        H_desde_Tbs_Tbh(T_bs, T_bh, P_kpa) {
+          const Hs_bh = this.H_sat(T_bh, P_kpa);
+          if (!Number.isFinite(Hs_bh)) return NaN;
+          if (T_bh >= 0.0) {
+            const num = (2501.0 - 2.326 * T_bh) * Hs_bh - this.CP_A * (T_bs - T_bh);
+            const den = 2501.0 + this.CP_V * T_bs - 4.186 * T_bh;
+            return num / den;
+          } else {
+            const num = (2830.0 - 0.24 * T_bh) * Hs_bh - this.CP_A * (T_bs - T_bh);
+            const den = 2830.0 + this.CP_V * T_bs - 2.1 * T_bh;
+            return num / den;
+          }
+        },
+
+        /** Temperatura de bulbo húmedo T_bh [°C] por bisección de alta precisión */
+        T_bh_desde_Tbs_H(T_bs, H, P_kpa, T_pr, tEbCached) {
+          const Hs_bs = this.H_sat(T_bs, P_kpa);
+          if (Number.isFinite(Hs_bs) && Math.abs(H - Hs_bs) < 1e-8) return T_bs;
+
+          const tEb = Number.isFinite(tEbCached) ? tEbCached : this.T_ebullicion(P_kpa);
+          const tSup = Math.min(T_bs, tEb - 0.05);
+          const f = (tbh) => this.H_desde_Tbs_Tbh(T_bs, tbh, P_kpa) - H;
+
+          const fSup = f(tSup);
+          if (!Number.isFinite(fSup) || fSup < -1e-9) return NaN;
+
+          let tInf = Number.isFinite(T_pr) ? T_pr : T_bs - 10.0;
+          tInf = Math.min(tInf, tSup - 1e-4);
+          let fInf = f(tInf);
+          let guard = 0;
+          while ((!Number.isFinite(fInf) || fInf > 0) && tInf > -95.0 && guard < 25) {
+            tInf = Math.max(-95.0, tInf - 15.0);
+            fInf = f(tInf);
+            guard++;
+          }
+          if (!Number.isFinite(fInf) || fInf > 0) return NaN;
+
+          let lo = tInf;
+          let hi = tSup;
+          for (let i = 0; i < 42; i++) {
+            const mid = 0.5 * (lo + hi);
+            const fm = f(mid);
+            if (!Number.isFinite(fm)) return NaN;
+            if (fm < 0) lo = mid;
+            else hi = mid;
+            if (hi - lo < 1e-4) break;
+          }
+          return 0.5 * (lo + hi);
+        },
+
+        /** Entalpía específica del aire húmedo [kJ/kg_as] */
+        entalpia(T_bs, H) {
+          return this.CP_A * T_bs + H * (this.H_FG0 + this.CP_V * T_bs);
+        },
+
+        /** Volumen húmedo específico v_H [m³/kg_as] */
+        volumen_especifico(T_bs, H, P_kpa) {
+          return ((this.RA * (T_bs + 273.15)) / P_kpa) * (1.0 + H / this.EPS);
+        },
+
+        /** Presión atmosférica estándar ISA [kPa] a partir de la altitud z [m s.n.m.] */
+        presionPorAltitud(z_m) {
+          const factor = 1.0 - 2.25577e-5 * z_m;
+          if (factor <= 0) return NaN;
+          return 101.325 * Math.pow(factor, 5.25588);
+        },
+
+        /**
+         * Calcula las 15 propiedades termodinámicas en (T_bs, H, P_kpa).
+         * Retorna null si el punto se encuentra en zona sobresaturada o inválida.
+         */
+        calcularEstado(T_bs, H, P_kpa, tEbCached) {
+          if (!Number.isFinite(T_bs) || !Number.isFinite(H) || H < -1e-9) return null;
+          let Hval = Math.max(0.0, H);
+
+          const P_sat = this.P_sat(T_bs);
+          if (!Number.isFinite(P_sat)) return null;
+
+          const H_s = this.H_sat(T_bs, P_kpa);
+          if (Number.isFinite(H_s)) {
+            if (Hval > H_s * 1.0008) return null;
+            Hval = Math.min(Hval, H_s);
+          }
+
+          const Pv = this.Pv_desde_H(Hval, P_kpa);
+          if (Pv >= 0.995 * P_kpa) return null;
+
+          const HR = P_sat > 0 ? (100.0 * Pv) / P_sat : NaN;
+          if (HR > 100.1) return null;
+
+          const mu = Number.isFinite(H_s) && H_s > 0 ? (100.0 * Hval) / H_s : NaN;
+          const T_pr = Pv > 1e-9 ? this.T_rocio(Pv, T_bs) : NaN;
+          const T_bh = this.T_bh_desde_Tbs_H(T_bs, Hval, P_kpa, T_pr, tEbCached);
+
+          const h = this.entalpia(T_bs, Hval);
+          const v_H = this.volumen_especifico(T_bs, Hval, P_kpa);
+          const rho_as = 1.0 / v_H;
+          const rho_ah = (1.0 + Hval) / v_H;
+          const c_s = this.CP_A + this.CP_V * Hval;
+          const y_w = Pv / P_kpa;
+
+          return {
+            T_bs,
+            T_bh,
+            T_pr,
+            H: Hval,
+            H_g: Hval * 1000.0,
+            HR: Math.min(100.0, Math.max(0.0, HR)),
+            mu,
+            Pv,
+            P_sat,
+            y_w,
+            h,
+            v_H,
+            rho_as,
+            rho_ah,
+            c_s,
+            P: P_kpa,
+          };
+        },
+      };
+
+      // =======================================================================
+      // 3. UTILIDADES GENERALES
+      // =======================================================================
+      const $ = (id) => document.getElementById(id);
+
+      /** Incremento limpio (1, 2, 5 × 10^n) para rejillas e isolíneas */
+      function pasoBonito(rango, nObjetivo = 8) {
+        if (!Number.isFinite(rango) || rango <= 0) return 1.0;
+        const bruto = rango / Math.max(1, nObjetivo);
+        const exp = Math.floor(Math.log10(bruto));
+        const base = bruto / Math.pow(10, exp);
+        let norm;
+        if (base <= 1.2) norm = 1.0;
+        else if (base <= 2.5) norm = 2.0;
+        else if (base <= 6.0) norm = 5.0;
+        else norm = 10.0;
+        return norm * Math.pow(10, exp);
+      }
+
+      function fmtNum(val, dec = 2) {
+        return Number.isFinite(val) ? val.toFixed(dec) : '—';
+      }
+
+      function fmtSigned(val, dec = 2) {
+        if (!Number.isFinite(val)) return '—';
+        return (val > 0 ? '+' : '') + val.toFixed(dec);
+      }
+
+      let toastTimer = null;
+      function showToast(msg) {
+        const el = $('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+      }
+
+      // =======================================================================
+      // 4. ESTADO GLOBAL DE LA APLICACIÓN
+      // =======================================================================
+      const state = {
+        T_min: 0.0,
+        T_max: 50.0,
+        H_max: 0.035,
+        P_kpa: 101.325,
+        tEb: Psicrometria.T_ebullicion(101.325),
+
+        layers: {
+          hr: true,
+          tbh: true,
+          enth: true,
+          vh: true,
+        },
+
+        // Estado actualmente inspeccionado (se conserva al soltar el dedo)
+        activeState: null,
+        activeOversaturated: false,
+
+        // Puntos fijados P1, P2, ...
+        pinnedPoints: [],
+        selectedPinnedIdx: -1,
+        deltaFromIdx: 0,
+        deltaToIdx: 1,
+
+        // Estado de arrastre táctil/mouse
+        isPointerDown: false,
+      };
+
+      // Inicializar con un punto de referencia claro (25 °C, 50% HR)
+      (function initDefaultPoint() {
+        const pv = 0.5 * Psicrometria.P_sat(25.0);
+        const H = Psicrometria.H_desde_Pv(pv, state.P_kpa);
+        state.activeState = Psicrometria.calcularEstado(25.0, H, state.P_kpa, state.tEb);
+      })();
+
+      // =======================================================================
+      // 5. MOTOR GRÁFICO CANVAS 2D (HIDPI + CACHÉ ESTÁTICA OFFSCREEN)
+      // =======================================================================
+      const canvas = $('psychroCanvas');
+      const ctx = canvas.getContext('2d');
+      const canvasWrapper = $('canvasWrapper');
+
+      // Canvas fuera de pantalla para la carta base (redibujado instantáneo a 60 fps al arrastrar)
+      const staticCanvas = document.createElement('canvas');
+      const sctx = staticCanvas.getContext('2d');
+
+      let metrics = {
+        cssW: 600,
+        cssH: 450,
+        dpr: 1,
+        left: 20,
+        right: 76,
+        top: 22,
+        bottom: 46,
+        plotW: 500,
+        plotH: 380,
+      };
+
+      function toX(T) {
+        return metrics.left + ((T - state.T_min) / (state.T_max - state.T_min)) * metrics.plotW;
+      }
+
+      function toY(H) {
+        return metrics.top + metrics.plotH - (H / state.H_max) * metrics.plotH;
+      }
+
+      function fromX(px) {
+        return state.T_min + ((px - metrics.left) / metrics.plotW) * (state.T_max - state.T_min);
+      }
+
+      function fromY(py) {
+        return ((metrics.top + metrics.plotH - py) / metrics.plotH) * state.H_max;
+      }
+
+      /** Dibuja una punta de flecha sólida en (x2, y2) desde (x1, y1) */
+      function drawArrowHead(c, x1, y1, x2, y2, color, size = 7.5) {
+        const ang = Math.atan2(y2 - y1, x2 - x1);
+        c.save();
+        c.fillStyle = color;
+        c.beginPath();
+        c.moveTo(x2, y2);
+        c.lineTo(x2 - size * Math.cos(ang - Math.PI / 6), y2 - size * Math.sin(ang - Math.PI / 6));
+        c.lineTo(x2 - size * Math.cos(ang + Math.PI / 6), y2 - size * Math.sin(ang + Math.PI / 6));
+        c.closePath();
+        c.fill();
+        c.restore();
+      }
+
+      /** Renderiza la carta base estática (cuadrícula, saturación, isolíneas y ejes) */
+      function renderStaticChart() {
+        const rect = canvasWrapper.getBoundingClientRect();
+        const cssW = Math.max(280, Math.floor(rect.width));
+        const cssH = Math.max(320, Math.floor(rect.height));
+        const dpr = Math.min(window.devicePixelRatio || 1, 3);
+
+        const isCompact = cssW < 520;
+        const left = isCompact ? 16 : 24;
+        const right = isCompact ? 64 : 78;
+        const top = 20;
+        const bottom = isCompact ? 42 : 48;
+
+        metrics = {
+          cssW,
+          cssH,
+          dpr,
+          left,
+          right,
+          top,
+          bottom,
+          plotW: cssW - left - right,
+          plotH: cssH - top - bottom,
+        };
+
+        const pixW = Math.floor(cssW * dpr);
+        const pixH = Math.floor(cssH * dpr);
+        if (canvas.width !== pixW || canvas.height !== pixH) {
+          canvas.width = pixW;
+          canvas.height = pixH;
+        }
+        if (staticCanvas.width !== pixW || staticCanvas.height !== pixH) {
+          staticCanvas.width = pixW;
+          staticCanvas.height = pixH;
+        }
+
+        sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        sctx.clearRect(0, 0, cssW, cssH);
+        sctx.fillStyle = '#ffffff';
+        sctx.fillRect(0, 0, cssW, cssH);
+
+        const { plotW, plotH } = metrics;
+        const plotR = left + plotW;
+        const plotB = top + plotH;
+        const Tmin = state.T_min;
+        const Tmax = state.T_max;
+        const Hmax = state.H_max;
+        const P = state.P_kpa;
+        const tEb = state.tEb;
+
+        // Precalcular vector de temperaturas y curva de saturación
+        const N = 260;
+        const tVec = new Array(N + 1);
+        const hsVec = new Array(N + 1);
+        for (let i = 0; i <= N; i++) {
+          const t = Tmin + (i / N) * (Tmax - Tmin);
+          tVec[i] = t;
+          hsVec[i] = Psicrometria.H_sat(t, P);
+        }
+
+        /** Crea el trazado de la región válida (debajo de saturación 100% HR) */
+        function traceValidRegion() {
+          sctx.beginPath();
+          sctx.moveTo(plotR, plotB);
+          sctx.lineTo(left, plotB);
+          for (let i = 0; i <= N; i++) {
+            const x = toX(tVec[i]);
+            const hs = hsVec[i];
+            const hClip = Number.isFinite(hs) ? Math.min(hs, Hmax) : Hmax;
+            sctx.lineTo(x, toY(hClip));
+          }
+          sctx.lineTo(plotR, top);
+          sctx.closePath();
+        }
+
+        // 1) Fondo sombreado para zona sobresaturada + blanco limpio en zona válida
+        sctx.save();
+        sctx.beginPath();
+        sctx.rect(left, top, plotW, plotH);
+        sctx.clip();
+
+        sctx.fillStyle = '#f1f5f9';
+        sctx.fillRect(left, top, plotW, plotH);
+
+        traceValidRegion();
+        sctx.fillStyle = '#ffffff';
+        sctx.fill();
+
+        // Activar clip exclusivo a la zona válida para la cuadrícula e isolíneas
+        traceValidRegion();
+        sctx.clip();
+
+        // 2) Cuadrícula de fondo (T_bs vertical y H horizontal)
+        const tStep = pasoBonito(Tmax - Tmin, isCompact ? 6 : 10);
+        const hStep = pasoBonito(Hmax, isCompact ? 6 : 8);
+
+        sctx.strokeStyle = '#e2e8f0';
+        sctx.lineWidth = 0.85;
+        const tStart = Math.ceil(Tmin / tStep) * tStep;
+        for (let t = tStart; t <= Tmax + 1e-6; t += tStep) {
+          const x = toX(t);
+          sctx.beginPath();
+          sctx.moveTo(x, top);
+          sctx.lineTo(x, plotB);
+          sctx.stroke();
+        }
+
+        for (let hVal = hStep; hVal <= Hmax + 1e-9; hVal += hStep) {
+          const y = toY(hVal);
+          sctx.beginPath();
+          sctx.moveTo(left, y);
+          sctx.lineTo(plotR, y);
+          sctx.stroke();
+        }
+
+        // 3) Isolíneas de Volumen Húmedo constante v_H (púrpura punteada)
+        if (state.layers.vh) {
+          const vMin = Psicrometria.volumen_especifico(Tmin, 0, P);
+          const vMax = Psicrometria.volumen_especifico(Tmax, Hmax, P);
+          const vStep = pasoBonito(vMax - vMin, isCompact ? 6 : 8);
+          const vStart = Math.ceil(vMin / vStep) * vStep;
+
+          sctx.save();
+          sctx.strokeStyle = 'rgba(124, 58, 237, 0.45)';
+          sctx.lineWidth = 1.0;
+          sctx.setLineDash([2.5, 3.5]);
+          sctx.font = '600 9.5px ui-monospace, Consolas, monospace';
+          sctx.fillStyle = '#6d28d9';
+
+          for (let vVal = vStart; vVal <= vMax; vVal += vStep) {
+            sctx.beginPath();
+            let started = false;
+            let lblPos = null;
+            for (let i = 0; i <= 80; i++) {
+              const t = Tmin + (i / 80) * (Tmax - Tmin);
+              const H = Psicrometria.EPS * ((vVal * P) / (Psicrometria.RA * (t + 273.15)) - 1.0);
+              const x = toX(t);
+              const y = toY(H);
+              if (!started) {
+                sctx.moveTo(x, y);
+                started = true;
+              } else {
+                sctx.lineTo(x, y);
+              }
+              const hsLocal = Psicrometria.H_sat(t, P);
+              const underSat = !Number.isFinite(hsLocal) || H < hsLocal - Hmax * 0.04;
+              if (!lblPos && H >= Hmax * 0.04 && H <= Hmax * 0.28 && underSat && x > left + 14 && x < plotR - 14) {
+                lblPos = { x, y };
+              }
+            }
+            sctx.stroke();
+            if (lblPos) {
+              sctx.save();
+              sctx.translate(lblPos.x, lblPos.y);
+              sctx.rotate(-1.22);
+              sctx.fillText(vVal.toFixed(2), 4, -3);
+              sctx.restore();
+            }
+          }
+          sctx.restore();
+        }
+
+        // 4) Isolíneas de Entalpía específica constante h (ámbar trazo-punto)
+        if (state.layers.enth) {
+          const eMin = Psicrometria.entalpia(Tmin, 0);
+          const eMax = Psicrometria.entalpia(Tmax, Hmax);
+          const eStep = pasoBonito(eMax - eMin, isCompact ? 7 : 10);
+          const eStart = Math.ceil(eMin / eStep) * eStep;
+
+          sctx.save();
+          sctx.strokeStyle = 'rgba(217, 119, 6, 0.48)';
+          sctx.lineWidth = 0.95;
+          sctx.setLineDash([7, 3, 2, 3]);
+          sctx.font = '600 9.5px ui-monospace, Consolas, monospace';
+          sctx.fillStyle = '#b45309';
+
+          for (let hTarget = eStart; hTarget <= eMax; hTarget += eStep) {
+            const hAtMin = (hTarget - Psicrometria.CP_A * Tmin) / (Psicrometria.H_FG0 + Psicrometria.CP_V * Tmin);
+            const hAtMax = (hTarget - Psicrometria.CP_A * Tmax) / (Psicrometria.H_FG0 + Psicrometria.CP_V * Tmax);
+            sctx.beginPath();
+            sctx.moveTo(toX(Tmin), toY(hAtMin));
+            sctx.lineTo(toX(Tmax), toY(hAtMax));
+            sctx.stroke();
+
+            // Colocar etiqueta cerca del extremo inferior visible
+            const tZero = hTarget / Psicrometria.CP_A;
+            if (tZero > Tmin + (Tmax - Tmin) * 0.06 && tZero < Tmax - (Tmax - Tmin) * 0.04) {
+              const tLbl = tZero - (Tmax - Tmin) * 0.025;
+              const hLbl = (hTarget - Psicrometria.CP_A * tLbl) / (Psicrometria.H_FG0 + Psicrometria.CP_V * tLbl);
+              const hsLbl = Psicrometria.H_sat(tLbl, P);
+              if (hLbl > 0 && hLbl < Hmax * 0.9 && (!Number.isFinite(hsLbl) || hLbl < hsLbl)) {
+                sctx.fillText(Math.round(hTarget) + ' kJ', toX(tLbl) - 10, toY(hLbl) - 4);
+              }
+            }
+          }
+          sctx.restore();
+        }
+
+        // 5) Isolíneas de Temperatura de Bulbo Húmedo constante T_bh (verde discontinua)
+        const tbhLabels = [];
+        if (state.layers.tbh) {
+          const tbhStep = pasoBonito(Tmax - Tmin, isCompact ? 8 : 12);
+          const tbhStart = Math.floor((Tmin - 20) / tbhStep) * tbhStep;
+          const tbhEnd = Math.min(Tmax, tEb - 0.5);
+
+          sctx.save();
+          sctx.strokeStyle = 'rgba(5, 150, 105, 0.45)';
+          sctx.lineWidth = 0.95;
+          sctx.setLineDash([5, 4]);
+
+          for (let tbh = tbhStart; tbh <= tbhEnd + 1e-6; tbh += tbhStep) {
+            if (tbh < -80 || tbh >= tEb - 0.25) continue;
+            const tIni = Math.max(Tmin, tbh);
+            if (tIni >= Tmax) continue;
+
+            sctx.beginPath();
+            let started = false;
+            for (let i = 0; i <= 40; i++) {
+              const t = tIni + (i / 40) * (Tmax - tIni);
+              const H = Psicrometria.H_desde_Tbs_Tbh(t, tbh, P);
+              if (!Number.isFinite(H)) continue;
+              const x = toX(t);
+              const y = toY(H);
+              if (!started) {
+                sctx.moveTo(x, y);
+                started = true;
+              } else {
+                sctx.lineTo(x, y);
+              }
+            }
+            if (started) sctx.stroke();
+
+            // Guardar coordenada sobre curva de saturación para rotular fuera del clip
+            const hsTbh = Psicrometria.H_sat(tbh, P);
+            if (tbh >= Tmin && tbh <= Tmax && Number.isFinite(hsTbh) && hsTbh > 0 && hsTbh <= Hmax * 0.97) {
+              tbhLabels.push({ tbh, x: toX(tbh), y: toY(hsTbh) });
+            }
+          }
+          sctx.restore();
+        }
+
+        // 6) Curvas de Humedad Relativa constante HR (10% a 90%, azul técnico)
+        if (state.layers.hr) {
+          sctx.save();
+          for (let hr = 10; hr <= 90; hr += 10) {
+            const frac = hr / 100.0;
+            const pts = [];
+            sctx.beginPath();
+            let started = false;
+            for (let i = 0; i <= N; i++) {
+              const t = tVec[i];
+              const pv = frac * Psicrometria.P_sat(t);
+              const H = Psicrometria.H_desde_Pv(pv, P);
+              if (!Number.isFinite(H) || H < 0 || H > Hmax * 1.1) {
+                started = false;
+                continue;
+              }
+              const x = toX(t);
+              const y = toY(H);
+              if (!started) {
+                sctx.moveTo(x, y);
+                started = true;
+              } else {
+                sctx.lineTo(x, y);
+              }
+              if (H <= Hmax * 0.96 && x > left + 18 && x < plotR - 22) {
+                pts.push({ x, y });
+              }
+            }
+            const isMajorHR = hr % 20 === 0;
+            sctx.strokeStyle = isMajorHR ? 'rgba(2, 132, 199, 0.62)' : 'rgba(2, 132, 199, 0.34)';
+            sctx.lineWidth = isMajorHR ? 1.15 : 0.85;
+            sctx.stroke();
+
+            // Etiqueta limpia con fondo blanco semitransparente
+            if (pts.length > 8 && (!isCompact || isMajorHR || hr === 50)) {
+              const idx = Math.floor(pts.length * 0.72);
+              const p = pts[idx];
+              const txt = hr + '%';
+              sctx.font = '600 9.5px system-ui, sans-serif';
+              const tw = sctx.measureText(txt).width;
+              sctx.fillStyle = 'rgba(255, 255, 255, 0.84)';
+              sctx.fillRect(p.x - tw / 2 - 2, p.y - 11, tw + 4, 11);
+              sctx.fillStyle = '#0369a1';
+              sctx.textAlign = 'center';
+              sctx.textBaseline = 'bottom';
+              sctx.fillText(txt, p.x, p.y - 1);
+            }
+          }
+          sctx.restore();
+        }
+
+        // Salir del clip de región válida (dejar solo clip del cuadro del plot)
+        sctx.restore();
+
+        // 7) Curva de Saturación (HR = 100%) en azul marino profundo grueso
+        sctx.save();
+        sctx.beginPath();
+        sctx.rect(left, top, plotW, plotH);
+        sctx.clip();
+
+        sctx.beginPath();
+        let satStarted = false;
+        for (let i = 0; i <= N; i++) {
+          const hs = hsVec[i];
+          if (!Number.isFinite(hs) || hs > Hmax * 1.15) continue;
+          const x = toX(tVec[i]);
+          const y = toY(hs);
+          if (!satStarted) {
+            sctx.moveTo(x, y);
+            satStarted = true;
+          } else {
+            sctx.lineTo(x, y);
+          }
+        }
+        sctx.strokeStyle = '#0f2942';
+        sctx.lineWidth = 2.5;
+        sctx.stroke();
+
+        // Etiquetas de T_bh sobre la curva de saturación (con anti-solapamiento)
+        if (tbhLabels.length > 0) {
+          sctx.font = '700 9.5px ui-monospace, Consolas, monospace';
+          sctx.fillStyle = '#047857';
+          sctx.textAlign = 'right';
+          sctx.textBaseline = 'bottom';
+          let lastLx = -999;
+          let lastLy = -999;
+          for (const item of tbhLabels) {
+            if (Math.hypot(item.x - lastLx, item.y - lastLy) < 26) continue;
+            if (item.x < left + 22 || item.y < top + 14) continue;
+            sctx.beginPath();
+            sctx.arc(item.x, item.y, 2.3, 0, Math.PI * 2);
+            sctx.fillStyle = '#059669';
+            sctx.fill();
+            sctx.fillStyle = '#047857';
+            sctx.fillText(Number(item.tbh.toFixed(1)) + '°', item.x - 5, item.y - 3);
+            lastLx = item.x;
+            lastLy = item.y;
+          }
+        }
+        sctx.restore();
+
+        // 8) Marco y Ejes (Eje X inferior: T_bs | Eje Y derecho: H)
+        sctx.save();
+        sctx.strokeStyle = '#94a3b8';
+        sctx.lineWidth = 1.2;
+        sctx.strokeRect(left, top, plotW, plotH);
+
+        // Eje X: Temperatura de bulbo seco
+        sctx.fillStyle = '#334155';
+        sctx.font = '600 10.5px ui-monospace, Consolas, monospace';
+        sctx.textAlign = 'center';
+        sctx.textBaseline = 'top';
+        for (let t = tStart; t <= Tmax + 1e-6; t += tStep) {
+          const x = toX(t);
+          sctx.beginPath();
+          sctx.moveTo(x, plotB);
+          sctx.lineTo(x, plotB + 5);
+          sctx.strokeStyle = '#64748b';
+          sctx.stroke();
+          sctx.fillText(Number(t.toFixed(1)) + '°', x, plotB + 7);
+        }
+
+        sctx.font = '700 11.5px system-ui, sans-serif';
+        sctx.fillStyle = '#0f2942';
+        sctx.fillText('Temperatura de bulbo seco, T_bs (°C)', left + plotW / 2, plotB + (isCompact ? 24 : 27));
+
+        // Eje Y derecho: Humedad absoluta H (kg_w / kg_as)
+        const hDec = hStep < 0.001 ? 4 : hStep < 0.01 ? 3 : 2;
+        sctx.textAlign = 'left';
+        sctx.textBaseline = 'middle';
+        sctx.font = '600 10.5px ui-monospace, Consolas, monospace';
+        for (let hVal = 0; hVal <= Hmax + 1e-9; hVal += hStep) {
+          const y = toY(hVal);
+          if (y < top - 2 || y > plotB + 2) continue;
+          sctx.beginPath();
+          sctx.moveTo(plotR, y);
+          sctx.lineTo(plotR + 5, y);
+          sctx.strokeStyle = '#64748b';
+          sctx.stroke();
+          sctx.fillStyle = '#334155';
+          sctx.fillText(hVal.toFixed(hDec), plotR + 8, y);
+        }
+
+        // Título vertical del Eje Y derecho
+        sctx.save();
+        sctx.translate(cssW - 11, top + plotH / 2);
+        sctx.rotate(-Math.PI / 2);
+        sctx.font = '700 11px system-ui, sans-serif';
+        sctx.fillStyle = '#0f2942';
+        sctx.textAlign = 'center';
+        sctx.fillText('Humedad absoluta, H (kg_w / kg_as)', 0, 0);
+        sctx.restore();
+
+        // Etiqueta discreta de saturación en esquina superior izquierda si cabe
+        sctx.font = '700 10px system-ui, sans-serif';
+        sctx.fillStyle = '#475569';
+        sctx.textAlign = 'left';
+        sctx.textBaseline = 'top';
+        sctx.fillText('Saturación 100% HR', left + 8, top + 6);
+        sctx.restore();
+      }
+
+      /** Dibuja la capa dinámica sobre la caché estática: puntos fijados, flechas y 4 guías activas */
+      function renderDynamicOverlay() {
+        const { dpr, left, top, plotW, plotH } = metrics;
+        const plotR = left + plotW;
+        const plotB = top + plotH;
+
+        // Volcado instantáneo de la carta base desde offscreen
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(staticCanvas, 0, 0);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(left, top, plotW, plotH);
+        ctx.clip();
+
+        // 1) Dibujar trayectoria y marcadores de puntos fijados (P1, P2, ...)
+        const pts = state.pinnedPoints;
+        for (let i = 1; i < pts.length; i++) {
+          const a = pts[i - 1];
+          const b = pts[i];
+          const x1 = toX(a.T_bs);
+          const y1 = toY(a.H);
+          const x2 = toX(b.T_bs);
+          const y2 = toY(b.H);
+          const dist = Math.hypot(x2 - x1, y2 - y1);
+          if (dist > 6) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 2.0;
+            ctx.stroke();
+            const ux = (x2 - x1) / dist;
+            const uy = (y2 - y1) / dist;
+            drawArrowHead(ctx, x1, y1, x2 - ux * 8, y2 - uy * 8, '#dc2626', 8);
+          }
+        }
+
+        pts.forEach((pt, idx) => {
+          const x = toX(pt.T_bs);
+          const y = toY(pt.H);
+          const isSel = idx === state.selectedPinnedIdx;
+
+          if (isSel) {
+            ctx.beginPath();
+            ctx.arc(x, y, 13, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.2)';
+            ctx.fill();
+          }
+
+          ctx.beginPath();
+          ctx.arc(x, y, 6.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#dc2626';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Etiqueta P1, P2...
+          const tag = 'P' + (idx + 1);
+          ctx.font = '700 10.5px system-ui, sans-serif';
+          const tw = ctx.measureText(tag).width;
+          const bx = Math.min(plotR - tw - 14, x + 8);
+          const by = Math.max(top + 4, y - 22);
+          ctx.beginPath();
+          ctx.roundRect(bx, by, tw + 10, 17, 5);
+          ctx.fillStyle = isSel ? '#dc2626' : '#fff5f5';
+          ctx.fill();
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.fillStyle = isSel ? '#ffffff' : '#991b1b';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(tag, bx + (tw + 10) / 2, by + 9);
+        });
+
+        // 2) Dibujar las 4 guías psicrométricas del punto activo
+        const est = state.activeState;
+        if (est && !state.activeOversaturated) {
+          const px = toX(est.T_bs);
+          const py = toY(est.H);
+
+          // Guía 1: Vertical roja discontinua hacia eje T_bs
+          ctx.save();
+          ctx.strokeStyle = '#dc2626';
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(px, plotB);
+          ctx.lineTo(px, py);
+          ctx.stroke();
+
+          // Guía 2: Horizontal roja discontinua hacia eje derecho H
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(plotR, py);
+          ctx.stroke();
+          ctx.restore();
+
+          // Guía 3: Horizontal punteada azul hacia izquierda (Punto de Rocío T_pr)
+          if (Number.isFinite(est.T_pr)) {
+            const xPr = toX(est.T_pr);
+            ctx.save();
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(xPr, py);
+            ctx.lineTo(px, py);
+            ctx.stroke();
+
+            // Punto azul en saturación (T_pr)
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(xPr, py, 4.2, 0, Math.PI * 2);
+            ctx.fillStyle = '#0284c7';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Guía 4: Diagonal punteada verde hacia arriba-izquierda (Bulbo Húmedo T_bh)
+          if (Number.isFinite(est.T_bh)) {
+            const hsBh = Psicrometria.H_sat(est.T_bh, state.P_kpa);
+            if (Number.isFinite(hsBh)) {
+              const xBh = toX(est.T_bh);
+              const yBh = toY(hsBh);
+              ctx.save();
+              ctx.strokeStyle = '#059669';
+              ctx.lineWidth = 1.6;
+              ctx.setLineDash([3, 3]);
+              ctx.beginPath();
+              ctx.moveTo(xBh, yBh);
+              for (let k = 1; k <= 12; k++) {
+                const tk = est.T_bh + (k / 12) * (est.T_bs - est.T_bh);
+                const hk = Psicrometria.H_desde_Tbs_Tbh(tk, est.T_bh, state.P_kpa);
+                if (Number.isFinite(hk)) ctx.lineTo(toX(tk), toY(hk));
+              }
+              ctx.stroke();
+
+              // Punto verde en saturación (T_bh)
+              ctx.setLineDash([]);
+              ctx.beginPath();
+              ctx.arc(xBh, yBh, 4.2, 0, Math.PI * 2);
+              ctx.fillStyle = '#059669';
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+
+          // Marcador principal del punto activo
+          ctx.beginPath();
+          ctx.arc(px, py, 10, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(220, 38, 38, 0.16)';
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#dc2626';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function redrawAllChart() {
+        renderStaticChart();
+        renderDynamicOverlay();
+      }
+
+      // =======================================================================
+      // 6. ACTUALIZACIÓN DE INTERFAZ (HUD, 15 PROPIEDADES, PUNTOS Y DELTAS)
+      // =======================================================================
+      function updatePropertiesUI(est, statusLabel, isWarn = false) {
+        const dot = $('hudStatusDot');
+        dot.classList.toggle('warn', isWarn);
+        $('hudStatusText').textContent = statusLabel;
+        $('hudBoilInfo').textContent = `T_eb ≈ ${state.tEb.toFixed(1)} °C`;
+        $('topPressureVal').textContent = state.P_kpa.toFixed(3);
+
+        if (!est) {
+          ['hudTbs', 'hudTbh', 'hudTpr', 'hudHg', 'hudHr'].forEach((id) => ($(id).textContent = '—'));
+          return;
+        }
+
+        // HUD superior (5 lecturas clave)
+        $('hudTbs').textContent = fmtNum(est.T_bs, 2);
+        $('hudTbh').textContent = fmtNum(est.T_bh, 2);
+        $('hudTpr').textContent = fmtNum(est.T_pr, 2);
+        $('hudHg').textContent = fmtNum(est.H_g, 2);
+        $('hudHr').textContent = Number.isFinite(est.HR) ? est.HR.toFixed(1) + '%' : '—';
+
+        // 15 Propiedades en la pestaña "Propiedades"
+        const map = {
+          p_T_bs: fmtNum(est.T_bs, 2),
+          p_T_bh: fmtNum(est.T_bh, 2),
+          p_T_pr: fmtNum(est.T_pr, 2),
+          p_H: fmtNum(est.H, 5),
+          p_H_g: fmtNum(est.H_g, 2),
+          p_HR: fmtNum(est.HR, 2),
+          p_mu: fmtNum(est.mu, 2),
+          p_Pv: fmtNum(est.Pv, 4),
+          p_P_sat: fmtNum(est.P_sat, 4),
+          p_y_w: fmtNum(est.y_w, 5),
+          p_h: fmtNum(est.h, 2),
+          p_v_H: fmtNum(est.v_H, 4),
+          p_rho_as: fmtNum(est.rho_as, 4),
+          p_rho_ah: fmtNum(est.rho_ah, 4),
+          p_c_s: fmtNum(est.c_s, 4),
+        };
+        for (const [id, text] of Object.entries(map)) {
+          $(id).textContent = text;
+        }
+      }
+
+      function renderPinnedPointsUI() {
+        const pts = state.pinnedPoints;
+        $('tabPointsBadge').textContent = pts.length;
+        const container = $('pointsListContainer');
+
+        if (pts.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              Aún no hay puntos fijados.<br>
+              Explora la carta y pulsa <strong>Fijar Punto</strong> o ingresa coordenadas arriba.
+            </div>
+          `;
+          $('deltaSection').style.display = 'none';
+          return;
+        }
+
+        container.innerHTML = `<div class="points-list">${pts
+          .map((pt, i) => {
+            const selCls = i === state.selectedPinnedIdx ? 'selected' : '';
+            return `
+              <div class="point-item ${selCls}" data-pidx="${i}">
+                <span class="point-tag">P${i + 1}</span>
+                <div class="point-info">
+                  <div class="point-main mono">T<sub>bs</sub> ${pt.T_bs.toFixed(1)}°C · T<sub>bh</sub> ${fmtNum(pt.T_bh, 1)}°C</div>
+                  <div class="point-sub mono">H = ${pt.H.toFixed(5)} kg/kg (${pt.H_g.toFixed(2)} g/kg) · HR ${pt.HR.toFixed(1)}%</div>
+                </div>
+                <button type="button" class="point-del" data-delidx="${i}" title="Eliminar P${i + 1}" aria-label="Eliminar P${i + 1}">×</button>
+              </div>
+            `;
+          })
+          .join('')}</div>`;
+
+        // Eventos para seleccionar o eliminar punto
+        container.querySelectorAll('.point-item').forEach((row) => {
+          row.addEventListener('click', (e) => {
+            if (e.target.closest('.point-del')) return;
+            const idx = Number(row.dataset.pidx);
+            state.selectedPinnedIdx = idx;
+            state.activeState = state.pinnedPoints[idx];
+            state.activeOversaturated = false;
+            updatePropertiesUI(state.activeState, `Punto fijado P${idx + 1} seleccionado`);
+            renderPinnedPointsUI();
+            renderDynamicOverlay();
+          });
+        });
+
+        container.querySelectorAll('.point-del').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = Number(btn.dataset.delidx);
+            state.pinnedPoints.splice(idx, 1);
+            if (state.selectedPinnedIdx === idx) state.selectedPinnedIdx = -1;
+            else if (state.selectedPinnedIdx > idx) state.selectedPinnedIdx--;
+            syncDeltaSelectors();
+            renderPinnedPointsUI();
+            renderDynamicOverlay();
+            showToast(`Punto P${idx + 1} eliminado`);
+          });
+        });
+
+        // Sección de diferencias de proceso si hay 2+ puntos
+        if (pts.length >= 2) {
+          $('deltaSection').style.display = 'block';
+          syncDeltaSelectors();
+          updateDeltaCard();
+        } else {
+          $('deltaSection').style.display = 'none';
+        }
+      }
+
+      function syncDeltaSelectors() {
+        const n = state.pinnedPoints.length;
+        if (n < 2) return;
+        const selFrom = $('selDeltaFrom');
+        const selTo = $('selDeltaTo');
+
+        // Por defecto apuntar a los últimos dos puntos cuando se agrega uno nuevo
+        if (state.deltaFromIdx >= n || state.deltaToIdx >= n || state.deltaFromIdx === state.deltaToIdx) {
+          state.deltaFromIdx = n - 2;
+          state.deltaToIdx = n - 1;
+        }
+
+        const optionsHtml = state.pinnedPoints
+          .map((_, i) => `<option value="${i}">P${i + 1}</option>`)
+          .join('');
+        selFrom.innerHTML = optionsHtml;
+        selTo.innerHTML = optionsHtml;
+        selFrom.value = String(state.deltaFromIdx);
+        selTo.value = String(state.deltaToIdx);
+      }
+
+      function updateDeltaCard() {
+        const pts = state.pinnedPoints;
+        if (pts.length < 2) return;
+        const p1 = pts[state.deltaFromIdx];
+        const p2 = pts[state.deltaToIdx];
+        if (!p1 || !p2) return;
+
+        const dT = p2.T_bs - p1.T_bs;
+        const dH = p2.H - p1.H;
+        const dh = p2.h - p1.h;
+
+        $('d_Tbs').textContent = fmtSigned(dT, 2);
+        $('d_H').textContent = fmtSigned(dH, 5);
+        $('d_Hg').textContent = `${fmtSigned(dH * 1000, 2)} g/kg`;
+        $('d_h').textContent = fmtSigned(dh, 2);
+      }
+
+      // =======================================================================
+      // 7. INTERACCIÓN TÁCTIL Y CON RATÓN (POINTER EVENTS)
+      // =======================================================================
+      function inspectAtClientPos(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const px = clientX - rect.left;
+        const py = clientY - rect.top;
+        const { left, top, plotW, plotH } = metrics;
+
+        if (px < left || px > left + plotW || py < top || py > top + plotH) {
+          return null;
+        }
+
+        const T_bs = fromX(px);
+        const H = fromY(py);
+        const est = Psicrometria.calcularEstado(T_bs, H, state.P_kpa, state.tEb);
+
+        if (!est) {
+          state.activeOversaturated = true;
+          updatePropertiesUI(null, 'Zona sobresaturada (HR > 100%)', true);
+          renderDynamicOverlay();
+          return null;
+        }
+
+        state.activeOversaturated = false;
+        state.activeState = est;
+        state.selectedPinnedIdx = -1;
+        updatePropertiesUI(est, 'Lectura en vivo — punto activo');
+        renderDynamicOverlay();
+        return est;
+      }
+
+      function pinState(est, sourceLabel) {
+        if (!est) {
+          showToast('Selecciona un punto válido dentro de la carta');
+          return;
+        }
+        state.pinnedPoints.push({ ...est });
+        const n = state.pinnedPoints.length;
+        state.selectedPinnedIdx = n - 1;
+        if (n >= 2) {
+          state.deltaFromIdx = n - 2;
+          state.deltaToIdx = n - 1;
+        }
+        state.activeState = state.pinnedPoints[n - 1];
+        state.activeOversaturated = false;
+        updatePropertiesUI(state.activeState, `Punto P${n} fijado (${sourceLabel})`);
+        renderPinnedPointsUI();
+        renderDynamicOverlay();
+        showToast(`Punto P${n} fijado (T_bs ${est.T_bs.toFixed(1)} °C, H ${est.H_g.toFixed(2)} g/kg)`);
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (e.button === 2) return; // Clic derecho se maneja aparte
+        state.isPointerDown = true;
+        if (canvas.setPointerCapture) {
+          try { canvas.setPointerCapture(e.pointerId); } catch (_err) {}
+        }
+        const est = inspectAtClientPos(e.clientX, e.clientY);
+        // En escritorio (ratón), clic izquierdo fija el punto directamente
+        if (e.pointerType === 'mouse' && est) {
+          pinState(est, 'clic en carta');
+        }
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'mouse') {
+          inspectAtClientPos(e.clientX, e.clientY);
+        } else if (state.isPointerDown) {
+          inspectAtClientPos(e.clientX, e.clientY);
+        }
+      });
+
+      canvas.addEventListener('pointerup', (e) => {
+        state.isPointerDown = false;
+        if (canvas.releasePointerCapture) {
+          try { canvas.releasePointerCapture(e.pointerId); } catch (_err) {}
+        }
+        // En pantallas táctiles el punto activo permanece fijado visualmente para leer las 15 propiedades
+      });
+
+      canvas.addEventListener('pointercancel', () => {
+        state.isPointerDown = false;
+      });
+
+      // Clic derecho en escritorio: deshacer último punto fijado
+      canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (state.pinnedPoints.length > 0) {
+          const removedNum = state.pinnedPoints.length;
+          state.pinnedPoints.pop();
+          state.selectedPinnedIdx = Math.min(state.selectedPinnedIdx, state.pinnedPoints.length - 1);
+          syncDeltaSelectors();
+          renderPinnedPointsUI();
+          renderDynamicOverlay();
+          showToast(`Se eliminó P${removedNum}`);
+        }
+      });
+
+      // =======================================================================
+      // 8. NAVEGACIÓN DE PESTAÑAS, CHIPS Y CONTROLES DE FORMULARIO
+      // =======================================================================
+      function switchTab(tabName, scrollToPanel = false) {
+        document.querySelectorAll('.tab-btn').forEach((btn) => {
+          const isAct = btn.dataset.tab === tabName;
+          btn.classList.toggle('active', isAct);
+          btn.setAttribute('aria-selected', String(isAct));
+        });
+        document.querySelectorAll('.tab-panel').forEach((panel) => {
+          panel.classList.toggle('active', panel.id === 'tab-' + tabName);
+        });
+        if (scrollToPanel && window.innerWidth < 960) {
+          $('sidePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      // Chips de isolíneas
+      document.querySelectorAll('.chip-toggle').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const key = chip.dataset.layer;
+          state.layers[key] = !state.layers[key];
+          chip.classList.toggle('active', state.layers[key]);
+          redrawAllChart();
+        });
+      });
+
+      // Botones de acciones rápidas y barra superior
+      $('qaPinCurrent').addEventListener('click', () => {
+        if (state.activeOversaturated || !state.activeState) {
+          showToast('Mueve el punto a una zona válida debajo de 100% HR');
+          return;
+        }
+        pinState(state.activeState, 'cursor');
+      });
+
+      $('qaGoRanges').addEventListener('click', () => switchTab('ranges', true));
+      $('btnTopPressure').addEventListener('click', () => switchTab('ranges', true));
+      $('qaGoManual').addEventListener('click', () => switchTab('points', true));
+
+      function clearAllPoints() {
+        if (state.pinnedPoints.length === 0) {
+          showToast('No hay puntos fijados para limpiar');
+          return;
+        }
+        state.pinnedPoints = [];
+        state.selectedPinnedIdx = -1;
+        renderPinnedPointsUI();
+        renderDynamicOverlay();
+        showToast('Todos los puntos fijados fueron eliminados');
+      }
+
+      $('qaClearPoints').addEventListener('click', clearAllPoints);
+      $('btnClearPointsTab').addEventListener('click', clearAllPoints);
+      $('btnPinCursorTab').addEventListener('click', () => {
+        if (state.activeOversaturated || !state.activeState) {
+          showToast('Selecciona un punto válido sobre la carta primero');
+          return;
+        }
+        pinState(state.activeState, 'cursor');
+      });
+
+      // Rangos y Presión
+      function applyRangesFromInputs() {
+        const errBox = $('rangeError');
+        errBox.classList.remove('visible');
+
+        const tmin = parseFloat($('inTmin').value);
+        const tmax = parseFloat($('inTmax').value);
+        const hmax = parseFloat($('inHmax').value);
+        const p = parseFloat($('inPressure').value);
+
+        if (![tmin, tmax, hmax, p].every(Number.isFinite)) {
+          errBox.textContent = 'Verifica que todos los campos contengan valores numéricos válidos.';
+          errBox.classList.add('visible');
+          return;
+        }
+        if (tmin >= tmax) {
+          errBox.textContent = 'T_mín debe ser estrictamente menor que T_máx.';
+          errBox.classList.add('visible');
+          return;
+        }
+        if (tmin < -80 || tmax > 180) {
+          errBox.textContent = 'El rango térmico válido de Hyland-Wexler es de -80 °C a 180 °C.';
+          errBox.classList.add('visible');
+          return;
+        }
+        if (hmax < 0.002 || hmax > 2.0) {
+          errBox.textContent = 'H_máx debe estar entre 0.002 y 2.0 kg/kg.';
+          errBox.classList.add('visible');
+          return;
+        }
+        if (p < 10 || p > 500) {
+          errBox.textContent = 'La presión P debe estar entre 10 kPa y 500 kPa.';
+          errBox.classList.add('visible');
+          return;
+        }
+
+        state.T_min = tmin;
+        state.T_max = tmax;
+        state.H_max = hmax;
+        state.P_kpa = p;
+        state.tEb = Psicrometria.T_ebullicion(p);
+
+        // Recalcular puntos fijados a la nueva presión conservando (T_bs, H)
+        state.pinnedPoints = state.pinnedPoints
+          .map((pt) => Psicrometria.calcularEstado(pt.T_bs, pt.H, p, state.tEb))
+          .filter(Boolean);
+        state.selectedPinnedIdx = Math.min(state.selectedPinnedIdx, state.pinnedPoints.length - 1);
+
+        // Recalcular punto activo si sigue dentro del rango; si no, centrar uno válido
+        let nextActive = state.activeState
+          ? Psicrometria.calcularEstado(state.activeState.T_bs, state.activeState.H, p, state.tEb)
+          : null;
+        if (!nextActive || nextActive.T_bs < tmin || nextActive.T_bs > tmax || nextActive.H > hmax) {
+          const tMid = 0.5 * (tmin + tmax);
+          const hsMid = Psicrometria.H_sat(tMid, p);
+          const hMid = Math.min(hmax * 0.45, Number.isFinite(hsMid) ? hsMid * 0.5 : hmax * 0.45);
+          nextActive = Psicrometria.calcularEstado(tMid, hMid, p, state.tEb);
+        }
+
+        state.activeState = nextActive;
+        state.activeOversaturated = false;
+
+        updatePropertiesUI(state.activeState, `Carta actualizada (P = ${p.toFixed(2)} kPa)`);
+        renderPinnedPointsUI();
+        redrawAllChart();
+        showToast(`Rangos actualizados: ${tmin}–${tmax} °C | P = ${p.toFixed(2)} kPa`);
+      }
+
+      $('btnApplyRanges').addEventListener('click', applyRangesFromInputs);
+
+      // Atajos de rango térmico
+      document.querySelectorAll('[data-trange]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const [tmin, tmax, hmax] = btn.dataset.trange.split(',').map(Number);
+          $('inTmin').value = tmin;
+          $('inTmax').value = tmax;
+          $('inHmax').value = hmax;
+          applyRangesFromInputs();
+        });
+      });
+
+      // Atajos de presión
+      document.querySelectorAll('[data-ppreset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          $('inPressure').value = btn.dataset.ppreset;
+          applyRangesFromInputs();
+        });
+      });
+
+      // Calculadora barométrica por altitud
+      $('btnCalcAlt').addEventListener('click', () => {
+        const z = parseFloat($('inAltitud').value);
+        if (!Number.isFinite(z) || z < -400 || z > 10000) {
+          $('altPreview').textContent = 'Ingresa una altitud válida entre -400 y 10000 m.';
+          return;
+        }
+        const pCalc = Psicrometria.presionPorAltitud(z);
+        $('inPressure').value = pCalc.toFixed(3);
+        $('altPreview').textContent = `A ${z.toFixed(0)} m s.n.m. → P ≈ ${pCalc.toFixed(3)} kPa`;
+        applyRangesFromInputs();
+      });
+
+      // Ingreso manual de punto
+      $('selManualMode').addEventListener('change', () => {
+        const mode = $('selManualMode').value;
+        const lbl = $('lblManV2');
+        const inp = $('inManV2');
+        if (mode === 'tbh') {
+          lbl.innerHTML = 'T<sub>bh</sub> (°C)';
+          inp.step = '0.1';
+          inp.value = '20.0';
+        } else if (mode === 'hr') {
+          lbl.textContent = 'HR (%)';
+          inp.step = '1';
+          inp.value = '50';
+        } else {
+          lbl.textContent = 'H (kg/kg)';
+          inp.step = '0.0005';
+          inp.value = '0.0120';
+        }
+        $('manualError').classList.remove('visible');
+      });
+
+      $('btnPinManual').addEventListener('click', () => {
+        const errBox = $('manualError');
+        errBox.classList.remove('visible');
+
+        const mode = $('selManualMode').value;
+        const v1 = parseFloat($('inManV1').value);
+        const v2 = parseFloat($('inManV2').value);
+
+        if (!Number.isFinite(v1) || !Number.isFinite(v2)) {
+          errBox.textContent = 'Ingresa ambos valores numéricos.';
+          errBox.classList.add('visible');
+          return;
+        }
+
+        const T_bs = v1;
+        let H = NaN;
+
+        if (mode === 'tbh') {
+          if (v2 > T_bs) {
+            errBox.textContent = 'Físicamente T_bh no puede ser mayor que T_bs.';
+            errBox.classList.add('visible');
+            return;
+          }
+          H = Psicrometria.H_desde_Tbs_Tbh(T_bs, v2, state.P_kpa);
+          if (!Number.isFinite(H) || H < 0) {
+            errBox.textContent = 'Esa combinación (T_bs, T_bh) resulta en H < 0 a la presión actual.';
+            errBox.classList.add('visible');
+            return;
+          }
+        } else if (mode === 'hr') {
+          if (v2 < 0 || v2 > 100) {
+            errBox.textContent = 'La humedad relativa (HR) debe estar entre 0 % y 100 %.';
+            errBox.classList.add('visible');
+            return;
+          }
+          const Pv = (v2 / 100.0) * Psicrometria.P_sat(T_bs);
+          if (Pv >= 0.995 * state.P_kpa) {
+            errBox.textContent = 'La presión de vapor supera la presión total del sistema.';
+            errBox.classList.add('visible');
+            return;
+          }
+          H = Psicrometria.H_desde_Pv(Pv, state.P_kpa);
+        } else {
+          if (v2 < 0) {
+            errBox.textContent = 'La humedad absoluta H no puede ser negativa.';
+            errBox.classList.add('visible');
+            return;
+          }
+          H = v2;
+        }
+
+        const est = Psicrometria.calcularEstado(T_bs, H, state.P_kpa, state.tEb);
+        if (!est) {
+          errBox.textContent = 'El punto cae en la zona sobresaturada (HR > 100%) a esta presión.';
+          errBox.classList.add('visible');
+          return;
+        }
+
+        // Auto-expandir si el punto ingresado queda fuera del marco visible actual
+        let expanded = false;
+        if (T_bs < state.T_min) { state.T_min = Math.floor(T_bs - 5); $('inTmin').value = state.T_min; expanded = true; }
+        if (T_bs > state.T_max) { state.T_max = Math.ceil(T_bs + 5); $('inTmax').value = state.T_max; expanded = true; }
+        if (est.H > state.H_max) { state.H_max = Number((est.H * 1.2).toFixed(3)); $('inHmax').value = state.H_max; expanded = true; }
+        if (expanded) renderStaticChart();
+
+        pinState(est, 'manual');
+      });
+
+      // Selectores de par de puntos para Delta de Proceso
+      $('selDeltaFrom').addEventListener('change', (e) => {
+        state.deltaFromIdx = Number(e.target.value);
+        updateDeltaCard();
+      });
+
+      $('selDeltaTo').addEventListener('change', (e) => {
+        state.deltaToIdx = Number(e.target.value);
+        updateDeltaCard();
+      });
+
+      // Copiar tabla resumen de puntos fijados al portapapeles (compatible con iFrames)
+      $('btnCopyPoints').addEventListener('click', () => {
+        if (state.pinnedPoints.length === 0) {
+          showToast('Fija al menos un punto antes de copiar');
+          return;
+        }
+        try {
+          const header = `Carta Psicrométrica (P = ${state.P_kpa.toFixed(3)} kPa)\nPunto\tT_bs (°C)\tT_bh (°C)\tT_pr (°C)\tH (kg/kg)\tH (g/kg)\tHR (%)\th (kJ/kg)\tv_H (m³/kg)\trho_as (kg/m³)`;
+          const rows = state.pinnedPoints.map((pt, i) => [
+            `P${i + 1}`,
+            fmtNum(pt.T_bs, 2),
+            fmtNum(pt.T_bh, 2),
+            fmtNum(pt.T_pr, 2),
+            fmtNum(pt.H, 5),
+            fmtNum(pt.H_g, 2),
+            fmtNum(pt.HR, 2),
+            fmtNum(pt.h, 2),
+            fmtNum(pt.v_H, 4),
+            fmtNum(pt.rho_as, 4),
+          ].join('\t'));
+
+          const ta = document.createElement('textarea');
+          ta.value = [header, ...rows].join('\n');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showToast('Tabla de puntos copiada (lista para Excel/Word)');
+        } catch (_err) {
+          showToast('No se pudo copiar al portapapeles');
+        }
+      });
+
+      // Botón Instalar App / Modal PWA
+      $('btnInstallApp').addEventListener('click', async () => {
+        if (deferredInstallPrompt) {
+          try {
+            deferredInstallPrompt.prompt();
+            await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            return;
+          } catch (_err) {}
+        }
+        $('installModal').classList.add('open');
+      });
+
+      $('btnCloseModal').addEventListener('click', () => $('installModal').classList.remove('open'));
+      $('installModal').addEventListener('click', (e) => {
+        if (e.target === $('installModal')) $('installModal').classList.remove('open');
+      });
+
+      // =======================================================================
+      // 9. OBSERVADOR DE TAMAÑO / ORIENTACIÓN Y ARRANQUE INICIAL
+      // =======================================================================
+      let resizeRaf = null;
+      function scheduleRedraw() {
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(() => {
+          redrawAllChart();
+        });
+      }
+
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(scheduleRedraw);
+        ro.observe(canvasWrapper);
+      } else {
+        window.addEventListener('resize', scheduleRedraw);
+      }
+
+      window.addEventListener('orientationchange', () => setTimeout(scheduleRedraw, 120));
+
+      // Render inicial
+      updatePropertiesUI(state.activeState, 'Punto inicial de referencia (25 °C, 50% HR)');
+      renderPinnedPointsUI();
+      redrawAllChart();
+    })();
+  </script>
+</body>
+</html>

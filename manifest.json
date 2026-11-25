@@ -1,0 +1,8 @@
+{
+  "name": "Carta Psicrométrica Interactiva",
+  "short_name": "Psicrometría",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b3c5d"
+}
